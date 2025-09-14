@@ -1,0 +1,104 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jenkins
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.jenkins.io
+    chart: jenkins
+    targetRevision: "5.8.73"
+    helm:
+      values: |
+        controller:
+          serviceType: ClusterIP
+          servicePort: 8080
+          jenkinsUriPrefix: "/jenkins"
+              
+          # Additional volumes for secret
+          additionalVolumes:
+            - name: jenkins-admin-secret-vol
+              secret:
+                secretName: jenkins-admin-secret
+                
+          # Additional volume mounts for secret
+          additionalVolumeMounts:
+            - name: jenkins-admin-secret-vol
+              mountPath: /run/secrets/jenkins
+              readOnly: true
+
+          # Admin configuration using existing secret
+          admin:
+            existingSecret: jenkins-admin-secret
+            userKey: jenkins-admin-user
+            passwordKey: jenkins-admin-password  # Specify the password key
+            
+          # Security contexts
+          podSecurityContext:
+            enabled: true
+            runAsUser: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+              
+          containerSecurityContext:
+            enabled: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  
+            seccompProfile:
+              type: RuntimeDefault
+              
+          # Jenkins image
+          image:
+            tag: "2.516.1-jdk21"
+            
+          # Persistence configuration
+          persistence:
+            enabled: true
+            existingClaim: "jenkins-data-pvc" 
+            storageClass: ""  # Empty to use PVC's storage class
+            size: "8Gi"     # Match your PVC size
+            accessMode: "ReadWriteOnce"
+            
+          # Resource limits
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"
+
+          # Sidecar configuration
+          sidecars:
+            configAutoReload:
+              enabled: true
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "128Mi"
+                  
+          # Agent configuration
+          agent:
+            enabled: disabled
+        
+        # Disable default storage class creation
+        persistence:
+          enabled: true
+          existingClaim: "jenkins-data-pvc"
+              
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jenkins
+    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

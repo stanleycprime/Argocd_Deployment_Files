@@ -1,0 +1,81 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sonarqube
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://SonarSource.github.io/helm-chart-sonarqube
+    chart: sonarqube
+    targetRevision: "10.4.1"
+    helm:
+      values: |
+        service:
+          type: ClusterIP
+
+        sonarProperties:
+          sonar.web.context: /sonarqube
+
+
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "800m"
+            memory: "2Gi"
+
+        containerSecurityContext:
+          runAsUser: 1000
+          runAsGroup: 0
+          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: false
+
+        extraInitContainers:
+          - name: init-permissions
+            image: busybox
+            command: ["sh", "-c", "chmod -R 777 /opt/sonarqube"]
+            volumeMounts:
+              - name: sonarqube
+                mountPath: /opt/sonarqube
+
+        # PostgreSQL configuration
+        postgresql:
+          enabled: true
+          auth:
+            existingSecret: sonarqube-db-secret
+            existingSecretPasswordKey: postgresql-password
+            existingSecretPostgresPasswordKey: postgresql-postgres-password
+
+
+          primary:
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "256Mi"
+              limits:
+                cpu: "300m"
+                memory: "512Mi"
+
+        # SonarQube admin credentials from secret
+        account:
+          existingSecret: sonarqube-db-secret
+          usernameKey: sonarqube-username
+          passwordKey: sonarqube-password
+
+        # Monitoring passcode from secret
+        monitoring:
+          existingSecret: sonarqube-db-secret
+          passcodeKey: monitoringPasscode
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sonarqube
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true

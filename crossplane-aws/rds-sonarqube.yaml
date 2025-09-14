@@ -1,0 +1,25 @@
+apiVersion: database.aws.crossplane.io/v1beta1
+kind: RDSInstance
+metadata:
+  name: sonarqube-db
+spec:
+  deletionPolicy: Delete
+  providerConfigRef:
+    name: default
+  forProvider:
+    region: us-east-1       
+    dbInstanceClass: db.t3.micro
+    engine: postgres
+    engineVersion: "13.15"            
+    allocatedStorage: 20             
+    storageEncrypted: true
+    publiclyAccessible: false
+    skipFinalSnapshotBeforeDeletion: true
+    masterUsername: sonar            
+    masterPasswordSecretRef:         
+      namespace: crossplane-system
+      name: sonar-db-creds
+      key: password
+  writeConnectionSecretToRef:
+    namespace: crossplane-system
+    name: sonar-db-conn

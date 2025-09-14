@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jenkins-ebs-pv
+  labels:
+    app: jenkins
+    managed-by: crossplane
+spec:
+  capacity:
+    storage: 8Gi  
+  accessModes: 
+    - ReadWriteOnce
+  storageClassName: manual-ebs
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: ebs.csi.aws.com
+    volumeHandle: vol-04bb71852a7f29956  
+    fsType: ext4
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: topology.ebs.csi.aws.com/zone
+          operator: In
+          values:
+          - us-east-1a  
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-data-pvc
+  namespace: jenkins
+  labels:
+    app: jenkins
+    managed-by: crossplane
+spec:
+  accessModes: 
+    - ReadWriteOnce
+  storageClassName: manual-ebs
+  resources:
+    requests:
+      storage: 8Gi 
+  volumeName: jenkins-ebs-pv
