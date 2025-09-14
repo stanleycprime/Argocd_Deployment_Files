@@ -8,7 +8,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: k8s-ingressn-ingressn-9ecccaa8b3-8afcc04c6bf639fd.elb.us-east-1.amazonaws.com
+  - host: k8s-ingressn-nginxing-7826ee4a1e-d5d7e7bf86e1f915.elb.us-east-1.amazonaws.com
     http:
       paths:
       - path: /sonarqube
